@@ -62,6 +62,12 @@ Resources:
       - Key: Name
         Value: !Sub route-table-public-${AWS::StackName}
 
+  RouteTablePublicAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPublicA
+
   RoutePublic1:
     Type: AWS::EC2::Route
     Properties:
@@ -76,3 +82,9 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub route-table-private-${AWS::StackName}
+
+  RouteTablePrivateAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      SubnetId: !Ref SubnetPrivateA
