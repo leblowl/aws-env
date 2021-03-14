@@ -4,6 +4,14 @@ Parameters:
     Description: VPC CIDR block
     Type: String
 
+  SubnetPublicACIDR:
+    Description: Subnet Public A CIDR block
+    Type: String
+
+  SubnetPrivateACIDR:
+    Description: Subnet Private A CIDR block
+    Type: String
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -13,4 +21,58 @@ Resources:
       EnableDnsHostnames: true
       Tags:
       - Key: Name
-        Value: !Join ['', ["VPC-", !Ref "AWS::StackName"]]
+        Value: !Sub vpc-${AWS::StackName}
+
+  SubnetPublicA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetPublicACIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+      - Key: Name
+        Value: !Sub subnet-public-a-${AWS::StackName}
+
+  SubnetPrivateA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetPrivateACIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+      - Key: Name
+        Value: !Sub subnet-private-a-${AWS::StackName}
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    DependsOn:
+      - InternetGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub route-table-public-${AWS::StackName}
+
+  RoutePublic1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  RouteTablePrivate:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub route-table-private-${AWS::StackName}

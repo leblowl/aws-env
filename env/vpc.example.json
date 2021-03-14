@@ -1,5 +1,7 @@
 {
   "Parameters": {
-    "VPCCIDR": "10.1.0.0/16"
+    "VPCCIDR": "10.1.0.0/16",
+    "SubnetPublicACIDR": "10.1.0.0/26",
+    "SubnetPrivateACIDR": "10.1.0.64/26"
   }
 }
