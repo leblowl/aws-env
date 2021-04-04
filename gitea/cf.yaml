@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  VPCStackName:
+    Description: Name of CF stack providing the VPC where Gitea instance will reside
+    Type: String
+
+  ImageID:
+    Description: AMI ID of EC2 Gitea instance
+    Type: String
+
+  InstanceType:
+    Description: Instance type of EC2 Gitea instance
+    Type: String
+
+  KeyName:
+    Description: Name of SSH key pair for EC2 Gitea instance
+    Type: String
+
+  IAMInstanceProfile:
+    Description: Name of IAM instance profile for EC2 Gitea instance
+    Type: String
+
+Resources:
+  EC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 8
+            VolumeType: gp3
+      CreditSpecification:
+        CPUCredits: standard
+      IamInstanceProfile: !Ref IAMInstanceProfile
+      ImageId: !Ref ImageID
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroupIds: [!Ref EC2SecurityGroup]
+      SubnetId:
+        Fn::ImportValue:
+          !Sub subnet-private-a-id-${VPCStackName}
+      Tags:
+        - Key: Name
+          Value: !Sub ec2-gitea-${AWS::StackName}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env -S bash -xe
+
+          # TODO: Install Gitea
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: String
+      GroupName: !Sub ec2-gitea-sg-${AWS::StackName}
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all traffic
+          FromPort: -1
+          IpProtocol: -1
+          ToPort: -1
+      VpcId:
+        Fn::ImportValue:
+          !Sub vpc-id-${VPCStackName}

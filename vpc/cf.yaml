@@ -187,3 +187,22 @@ Resources:
           SourceSecurityGroupId: !GetAtt [VPC, DefaultSecurityGroup]
           ToPort: -1
       VpcId: !Ref VPC
+
+Outputs:
+    VPCId:
+        Description: ID of VPC
+        Value: !Ref VPC
+        Export:
+          Name: !Sub vpc-id-${AWS::StackName}
+
+    SubnetPublicA:
+        Description: ID of public subnet A
+        Value: !Ref SubnetPublicA
+        Export:
+          Name: !Sub subnet-public-a-id-${AWS::StackName}
+
+    SubnetPrivateA:
+        Description: ID of private subnet A
+        Value: !Ref SubnetPrivateA
+        Export:
+          Name: !Sub subnet-private-a-id-${AWS::StackName}
