@@ -124,7 +124,7 @@ Resources:
       ImageId: !Ref EC2NATImageID
       InstanceType: !Ref EC2NATInstanceType
       KeyName: !Ref EC2NATKeyName
-      # SecurityGroupIds: TODO
+      SecurityGroupIds: [!Ref EC2NATSecurityGroup]
       SourceDestCheck: false
       SubnetId: !Ref SubnetPublicA
       Tags:
