@@ -12,6 +12,18 @@ Parameters:
     Description: Subnet Private A CIDR block
     Type: String
 
+  EC2NATImageID:
+    Description: AMI ID of EC2 NAT instance
+    Type: String
+
+  EC2NATInstanceType:
+    Description: Instance type of EC2 NAT instance
+    Type: String
+
+  EC2NATKeyName:
+    Description: Name of SSH key pair for EC2 NAT instance
+    Type: String
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -20,8 +32,8 @@ Resources:
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
-      - Key: Name
-        Value: !Sub vpc-${AWS::StackName}
+        - Key: Name
+          Value: !Sub vpc-${AWS::StackName}
 
   SubnetPublicA:
     Type: AWS::EC2::Subnet
@@ -30,8 +42,8 @@ Resources:
       CidrBlock: !Ref SubnetPublicACIDR
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
-      - Key: Name
-        Value: !Sub subnet-public-a-${AWS::StackName}
+        - Key: Name
+          Value: !Sub subnet-public-a-${AWS::StackName}
 
   SubnetPrivateA:
     Type: AWS::EC2::Subnet
@@ -40,8 +52,8 @@ Resources:
       CidrBlock: !Ref SubnetPrivateACIDR
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
-      - Key: Name
-        Value: !Sub subnet-private-a-${AWS::StackName}
+        - Key: Name
+          Value: !Sub subnet-private-a-${AWS::StackName}
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -59,8 +71,8 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       Tags:
-      - Key: Name
-        Value: !Sub route-table-public-${AWS::StackName}
+        - Key: Name
+          Value: !Sub route-table-public-${AWS::StackName}
 
   RouteTablePublicAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -88,3 +100,90 @@ Resources:
     Properties:
       RouteTableId: !Ref RouteTablePrivate
       SubnetId: !Ref SubnetPrivateA
+
+  RoutePrivate1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTablePrivate
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref EC2NAT
+
+  EC2NAT:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 8
+            VolumeType: gp3
+      CreditSpecification:
+        CPUCredits: standard
+      IamInstanceProfile: !Ref EC2SSMInstanceProfile
+      ImageId: !Ref EC2NATImageID
+      InstanceType: !Ref EC2NATInstanceType
+      KeyName: !Ref EC2NATKeyName
+      # SecurityGroupIds: TODO
+      SourceDestCheck: false
+      SubnetId: !Ref SubnetPublicA
+      Tags:
+        - Key: Name
+          Value: !Sub ec2-nat-${AWS::StackName}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env -S bash -xe
+
+          # Update system
+          apt update && apt upgrade -y
+          # Setup iptables
+          iptables -A POSTROUTING -t nat -s ${SubnetPrivateACIDR} -j MASQUERADE
+          # Show iptables
+          iptables -L -t nat
+          # Setup ipv4 forwarding
+          sysctl -w net.ipv4.ip_forward=1
+          # Show ipv4 forwarding
+          cat /proc/sys/net/ipv4/ip_forward
+
+  EC2SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: ec2-ssm
+      Roles:
+        - !Ref EC2SSMRole
+
+  EC2SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Allows EC2 instances to use SSM
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      RoleName: ec2-ssm
+
+  EC2NATSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: String
+      GroupName: !Sub ec2-nat-sg-${AWS::StackName}
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all traffic
+          FromPort: -1
+          IpProtocol: -1
+          ToPort: -1
+      SecurityGroupIngress:
+        - Description: Allow all from the default security group
+          FromPort: -1
+          IpProtocol: -1
+          SourceSecurityGroupId: !GetAtt [VPC, DefaultSecurityGroup]
+          ToPort: -1
+      VpcId: !Ref VPC
