@@ -41,6 +41,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref SubnetPublicACIDR
       AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Sub subnet-public-a-${AWS::StackName}
@@ -181,10 +182,10 @@ Resources:
           IpProtocol: -1
           ToPort: -1
       SecurityGroupIngress:
-        - Description: Allow all from the default security group
+        - Description: Allow all from private subnet A
           FromPort: -1
           IpProtocol: -1
-          SourceSecurityGroupId: !GetAtt [VPC, DefaultSecurityGroup]
+          CidrIp: !Ref SubnetPrivateACIDR
           ToPort: -1
       VpcId: !Ref VPC
 
